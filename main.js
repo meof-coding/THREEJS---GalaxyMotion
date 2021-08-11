@@ -1,13 +1,13 @@
 import './style.css'
+import * as Simplex from 'simplex-noise';
 import * as THREE from 'three';
 import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
-// import {SimplexNoise} from "./simplex-noise.js"
+import { Vector3 } from 'three';
 
 
-
+const noise = new Simplex();
 const scence = new THREE.Scene();
 const blobScale = 3;
-// const noise = new SimplexNoise();
 const cameraSpeed = 0;
 let container = document.getElementById("canvas_container");
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 1000);
@@ -63,19 +63,22 @@ const sphereBg = new THREE.Mesh(geometrySphereBg, materialSphereBg);
 scence.add(sphereBg);
 
 /*    Moving Stars   */
-const points = [];
-let starsGeometry = new THREE.BufferGeometry().setFromPoints(points)
-
+let starsGeometry = new THREE.BufferGeometry();
+const positions = [];
+const velocity =[];
 for (let i = 0; i < 50; i++) {
   const particleStar = randomPointSphere(150);//RANDOM POINT
 
   particleStar.velocity = THREE.MathUtils.randInt(50, 200);
-
-  particleStar.startX = particleStar.x;
-  particleStar.startY = particleStar.y;
-  particleStar.startZ = particleStar.z;
-
-  points.push(particleStar);
+  velocity.push(particleStar.velocity);
+  positions.push((particleStar.x)) ;
+  positions.push((particleStar.y)) ;
+  positions.push((particleStar.z)) ;
+  //animation
+  
+  starsGeometry.setAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
+  starsGeometry.setAttribute( 'velocity', new THREE.Float32BufferAttribute( velocity, 1 ) );
+  console.log(starsGeometry.getAttribute('position'));
 }
 let starsMaterial = new THREE.PointsMaterial({
   size: 5,
@@ -95,13 +98,13 @@ function randomPointSphere(radius) {
   let dx = 0 + (radius * Math.sin(phi) * Math.cos(theta));
   let dy = 0 + (radius * Math.sin(phi) * Math.sin(theta));
   let dz = 0 + (radius * Math.cos(phi));
+  // console.log(dy);
   return new THREE.Vector3(dx, dy, dz);
 }
-
     /*    Fixed Stars   */
     function createStars(texture, size, total) {
         const newpoint = [];
-        let pointGeometry = new THREE.BufferGeometry().setFromPoints( newpoint );
+        let pointGeometry = new THREE.BufferGeometry();
         let pointMaterial = new THREE.PointsMaterial({
             size: size,
             map: texture,
@@ -111,49 +114,22 @@ function randomPointSphere(radius) {
         for (let i = 0; i < total; i++) {
             let radius = THREE.MathUtils.randInt(149, 70); 
             let particles = randomPointSphere(radius);
-            newpoint.push(particles);
+            newpoint.push(particles.getComponent(0));
+            newpoint.push(particles.getComponent(1));
+            newpoint.push(particles.getComponent(2));
         }
+        pointGeometry.setAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
+        // console.log( new THREE.Points(pointGeometry, pointMaterial));
         return new THREE.Points(pointGeometry, pointMaterial);
     }
     scence.add(createStars(texture1, 15, 20));   
+    
     scence.add(createStars(texture2, 5, 5));
     scence.add(createStars(texture4, 7, 5));
+    
 
 function animate() {
-  //Stars  Animation
-  const positionAttribute = stars.geometry.getAttribute('position');
-  const vertex = new THREE.Vector3();
-  for(let i =0; i<positionAttribute.count;i++){
-    vertex.fromBufferAttribute(positionAttribute,i);
-    vertex.x += (0 - vertex.x) / vertex.velocity;
-    vertex.y += (0 - vertex.y) / vertex.velocity;
-    vertex.z += (0 - vertex.z) / vertex.velocity;
-    positionAttribute.setXYZ( i, vertex.x, vertex.y, vertex.z );
-    vertex.velocity -= 0.3;
 
-        if (vertex.x <= 5 && vertex.x >= -5 && vertex.z <= 5 && vertex.z >= -5) {
-            vertex.x = vertex.startX;
-            vertex.y = vertex.startY;
-            vertex.z = vertex.startZ;
-            vertex.velocity = THREE.MathUtils.randInt(50, 300);
-        }
-    };
-  
-     //Nucleus Animation
-      const positionAtt = nucleus.geometry.getAttribute('position');
-      // const vertex = new THREE.Vector3();
-      for(let i =0; i<positionAttribute.count;i++){
-        vertex.fromBufferAttribute(positionAttribute,i);
-        let time = Date.now();
-        vertex.normalize();
-        var noise = new SimplexNoise();
-        let distance = nucleus.geometry.parameters.radius + noise.noise3D(
-            vertex.x + time * 0.0005,
-            vertex.y + time * 0.0003,
-            vertex.z + time * 0.0008
-        ) * blobScale;
-        vertex.multiplyScalar(distance);
-    }
     nucleus.geometry.verticesNeedUpdate = true;
     nucleus.geometry.normalsNeedUpdate = true;
     nucleus.geometry.computeVertexNormals();
@@ -175,14 +151,4 @@ function animate() {
 }
 animate()
 
-/*     Resize     */
-window.addEventListener("resize", () => {
- clearTimeout(timeout_Debounce);
-     const timeout_Debounce = setTimeout(onWindowResize, 80);
-});
-function onWindowResize() {
-    camera.aspect = container.clientWidth / container.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-}
 
